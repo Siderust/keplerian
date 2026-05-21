@@ -1,0 +1,52 @@
+[package]
+name = "keplerian"
+version = "0.1.0"
+edition = "2021"
+authors = ["VPRamon <vallespuigramon@gmail.com>"]
+description = "Domain-agnostic Keplerian dynamics: typed anomaly solvers, elements, propagation, Lambert, and transfer search."
+license = "AGPL-3.0-only"
+readme = "README.md"
+repository = "https://github.com/Siderust/keplerian"
+keywords = ["kepler", "orbital-mechanics", "lambert", "astrodynamics", "science"]
+categories = ["science", "mathematics", "aerospace"]
+
+[features]
+default = ["std"]
+std = ["qtty/std"]
+alloc = ["qtty/alloc"]
+serde = ["dep:serde", "qtty/serde", "affn/serde"]
+
+[dependencies]
+qtty = { version = "0.8", default-features = false, features = ["satellite"] }
+affn = { version = "0.7.1", default-features = false, features = ["astro"] }
+thiserror = { version = "2", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
+
+[dev-dependencies]
+approx = "0.5"
+proptest = "1.4"
+
+[[example]]
+name = "transfer_search"
+required-features = ["alloc"]
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "deny"
+unreachable_pub = "warn"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+print_stdout = "warn"
+
+[lints.rustdoc]
+broken_intra_doc_links = "deny"
+
+[patch.crates-io]
+qtty = { path = "../qtty/qtty" }
+qtty-core = { path = "../qtty/qtty-core" }
+qtty-derive = { path = "../qtty/qtty-derive" }
+affn = { path = "../affn" }
