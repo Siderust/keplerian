@@ -6,8 +6,9 @@ use affn::centers::ReferenceCenter;
 use affn::frames::ReferenceFrame;
 use affn::frames::ICRS;
 use keplerian::anomaly::{
-    kepler_parabolic, kepler_elliptic, kepler_hyperbolic, AnomalyOptions, eccentric_from_mean,
-    hyperbolic_from_mean, true_from_hyperbolic, hyperbolic_from_true, mean_from_hyperbolic,
+    eccentric_from_mean, hyperbolic_from_mean, hyperbolic_from_true, kepler_elliptic,
+    kepler_hyperbolic, kepler_parabolic, mean_from_hyperbolic, true_from_hyperbolic,
+    AnomalyOptions,
 };
 use keplerian::eccentricity::Eccentricity;
 use keplerian::elements::{ConversionError, KeplerianElements};
@@ -15,7 +16,7 @@ use keplerian::error::KeplerError;
 use keplerian::lambert::{lambert_n_rev, LambertBranch, LambertError, NRevBranch};
 use keplerian::problem::{KeplerProblem, PropagationError};
 use keplerian::state::CartesianState;
-use keplerian::transfer::{orbital_period, specific_orbital_energy, specific_angular_momentum};
+use keplerian::transfer::{orbital_period, specific_angular_momentum, specific_orbital_energy};
 use qtty::angular::Radians;
 use qtty::dynamics::GravitationalParameter;
 use qtty::length::{Kilometer, Kilometers};
@@ -310,7 +311,15 @@ fn lambert_n_rev_valid_case() {
     let tof = Second::new(10800.0);
     let mu = GravitationalParameter::new(398600.4418);
     // May succeed or fail depending on geometry; just exercise the code path.
-    let _ = lambert_n_rev(r1, r2, tof, mu, LambertBranch::Prograde, 1, NRevBranch::Left);
+    let _ = lambert_n_rev(
+        r1,
+        r2,
+        tof,
+        mu,
+        LambertBranch::Prograde,
+        1,
+        NRevBranch::Left,
+    );
 }
 
 #[test]
@@ -319,7 +328,15 @@ fn lambert_n_rev_retrograde_case() {
     let r2 = Position::<(), ICRS, Kilometer>::new(0.0, 7000.0, 0.0);
     let tof = Second::new(10800.0);
     let mu = GravitationalParameter::new(398600.4418);
-    let _ = lambert_n_rev(r1, r2, tof, mu, LambertBranch::Retrograde, 1, NRevBranch::Right);
+    let _ = lambert_n_rev(
+        r1,
+        r2,
+        tof,
+        mu,
+        LambertBranch::Retrograde,
+        1,
+        NRevBranch::Right,
+    );
 }
 
 // ── search.rs ─────────────────────────────────────────────────────────────────
@@ -400,8 +417,12 @@ mod search_tests {
             flight_times: alloc::vec![Second::new(4560.0)],
         };
         let out = lambert_search(
-            &FixedProvider { pos: [0.0, 0.0, 0.0] },
-            &FixedProvider { pos: [0.0, 0.0, 0.0] },
+            &FixedProvider {
+                pos: [0.0, 0.0, 0.0],
+            },
+            &FixedProvider {
+                pos: [0.0, 0.0, 0.0],
+            },
             grid,
             GravitationalParameter::new(398600.4418),
             LambertBranch::Prograde,
