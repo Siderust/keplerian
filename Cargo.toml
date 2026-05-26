@@ -1,6 +1,6 @@
 [package]
 name = "keplerian"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["VPRamon <vallespuigramon@gmail.com>"]
 description = "Domain-agnostic Keplerian dynamics: typed anomaly solvers, elements, propagation, Lambert, and transfer search."

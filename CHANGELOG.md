@@ -7,6 +7,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-26
+
 ### Added
 
 - `MeanAnomaly`, `TrueAnomaly`, `EccentricAnomaly`, `HyperbolicAnomaly`,
@@ -77,4 +79,5 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Audit, deny, coverage (llvm-cov ≥ 90 % line rate), and Miri jobs.
 - Publish workflow triggered on `v*.*.*` tags.
 
+[0.2.0]: https://github.com/siderust/keplerian/releases/tag/v0.2.0
 [0.1.0]: https://github.com/siderust/keplerian/releases/tag/v0.1.0

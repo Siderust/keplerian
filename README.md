@@ -1,5 +1,10 @@
 # keplerian
 
+[![Crates.io](https://img.shields.io/crates/v/keplerian)](https://crates.io/crates/keplerian)
+[![docs.rs](https://img.shields.io/docsrs/keplerian)](https://docs.rs/keplerian)
+[![CI](https://github.com/Siderust/keplerian/actions/workflows/ci.yml/badge.svg)](https://github.com/Siderust/keplerian/actions/workflows/ci.yml)
+[![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue)](LICENSE)
+
 Domain-agnostic Keplerian dynamics in Rust: typed anomaly solvers,
 classical elements, two-body propagation, Lambert transfers, and
 transfer/search helpers built only on [`qtty`] and [`affn`].
