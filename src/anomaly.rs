@@ -354,8 +354,7 @@ pub fn kepler_elliptic(
             }
         }
     }
-    elliptic_bisection(mean_value, ecc_value, opts)
-        .map(|v| EccentricAnomaly::new(Radians::new(v)))
+    elliptic_bisection(mean_value, ecc_value, opts).map(|v| EccentricAnomaly::new(Radians::new(v)))
 }
 
 /// Solves the hyperbolic Kepler equation `M = e sinh(F) − F`.
@@ -611,9 +610,7 @@ pub fn true_from_hyperbolic(fa: HyperbolicAnomaly, ecc: Eccentricity) -> TrueAno
 /// ```
 #[must_use]
 pub fn mean_from_hyperbolic(fa: HyperbolicAnomaly, ecc: Eccentricity) -> MeanAnomaly {
-    MeanAnomaly::new(Radians::new(
-        ecc.value() * fa.value().sinh() - fa.value(),
-    ))
+    MeanAnomaly::new(Radians::new(ecc.value() * fa.value().sinh() - fa.value()))
 }
 
 /// Converts mean anomaly to hyperbolic anomaly.
@@ -855,9 +852,12 @@ mod tests {
     fn detects_non_convergence() {
         // 1 iteration with extreme tolerance forces non-convergence.
         let opts = AnomalyOptions::try_new(1, 1e-20).unwrap();
-        let err =
-            kepler_elliptic(MeanAnomaly::from_value(1.0), Eccentricity::new(0.9).unwrap(), opts)
-                .unwrap_err();
+        let err = kepler_elliptic(
+            MeanAnomaly::from_value(1.0),
+            Eccentricity::new(0.9).unwrap(),
+            opts,
+        )
+        .unwrap_err();
         assert!(matches!(err, AnomalyError::NotConverged { .. }));
     }
 
@@ -865,8 +865,7 @@ mod tests {
     fn near_parabolic_hyperbolic_solver_converges() {
         let ecc = Eccentricity::new(1.0000001).unwrap();
         let mean = MeanAnomaly::from_value(0.001_f64.to_radians() + 0.01720209895 * 0.5);
-        let f = kepler_hyperbolic(mean, ecc, AnomalyOptions::try_new(100, 1e-14).unwrap())
-            .unwrap();
+        let f = kepler_hyperbolic(mean, ecc, AnomalyOptions::try_new(100, 1e-14).unwrap()).unwrap();
 
         assert!(f.value().is_finite());
         assert!(hyperbolic_residual(f.value(), ecc.value(), mean.value()).abs() < 1e-13);

@@ -254,12 +254,8 @@ fn elliptic_circular_orbit_returns_mean_anomaly() {
 #[test]
 fn hyperbolic_mean_anomaly_zero_returns_zero() {
     let ecc = Eccentricity::new_unchecked(1.5);
-    let f = hyperbolic_from_mean(
-        MeanAnomaly::from_value(0.0),
-        ecc,
-        AnomalyOptions::default(),
-    )
-    .unwrap();
+    let f =
+        hyperbolic_from_mean(MeanAnomaly::from_value(0.0), ecc, AnomalyOptions::default()).unwrap();
     assert!(f.value().abs() < 1e-14);
 }
 
@@ -295,16 +291,22 @@ fn hyperbolic_anomaly_round_trips() {
 #[test]
 fn hyperbolic_kepler_rejects_nan_mean_anomaly() {
     let ecc = Eccentricity::new_unchecked(1.5);
-    let err =
-        hyperbolic_from_mean(MeanAnomaly::from_value(f64::NAN), ecc, AnomalyOptions::default());
+    let err = hyperbolic_from_mean(
+        MeanAnomaly::from_value(f64::NAN),
+        ecc,
+        AnomalyOptions::default(),
+    );
     assert!(err.is_err());
 }
 
 #[test]
 fn elliptic_kepler_rejects_nan_mean_anomaly() {
     let ecc = Eccentricity::new_unchecked(0.5);
-    let err =
-        eccentric_from_mean(MeanAnomaly::from_value(f64::NAN), ecc, AnomalyOptions::default());
+    let err = eccentric_from_mean(
+        MeanAnomaly::from_value(f64::NAN),
+        ecc,
+        AnomalyOptions::default(),
+    );
     assert!(err.is_err());
 }
 

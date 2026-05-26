@@ -212,7 +212,9 @@ impl<F: ReferenceFrame> KeplerianElements<F> {
         let nu = self.true_anomaly.value();
         let p = a * (1.0 - e * e);
         if p <= 0.0 {
-            return Err(ConversionError::Degenerate("non-positive semi-latus rectum"));
+            return Err(ConversionError::Degenerate(
+                "non-positive semi-latus rectum",
+            ));
         }
         let denom = 1.0 + e * nu.cos();
         if denom <= EPS {
@@ -418,7 +420,9 @@ mod tests {
             Radians::new(1.1),
         )
         .unwrap();
-        let st = el.try_to_cartesian::<Center>(GravitationalParameter::new(398600.4418)).unwrap();
+        let st = el
+            .try_to_cartesian::<Center>(GravitationalParameter::new(398600.4418))
+            .unwrap();
         let back = KeplerianElements::from_cartesian(&st, GravitationalParameter::new(398600.4418))
             .unwrap();
         assert!((back.semi_major_axis.value() - el.semi_major_axis.value()).abs() < 1e-8);
