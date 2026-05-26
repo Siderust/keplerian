@@ -4,9 +4,9 @@ version = 4
 
 [[package]]
 name = "affn"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e64f45b201739dea0c81b5fd4314f9cbc35f3d6ed5163e9bfec17be47178d89"
+checksum = "c87b9ab9380ca5e99f103892edf0d608fd693aee15445e76d9669500ae6560a4"
 dependencies = [
  "affn-derive",
  "qtty",
@@ -15,9 +15,9 @@ dependencies = [
 
 [[package]]
 name = "affn-derive"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e59162518fab751e2af6b0e7ec7394f04cef094bd667cc5b09b3f2ecd6f0b5a"
+checksum = "0b0de78baee7e6ec28ef4f556d50a710a2fde9dcb89da1bd80e4cc4a36643984"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -214,9 +214,9 @@ checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
 
 [[package]]
 name = "log"
-version = "0.4.29"
+version = "0.4.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
+checksum = "616ec5685824bcc94416c6d4a7a446eea774a31efd7062c8480ba6fd06d7a6e5"
 
 [[package]]
 name = "memchr"
@@ -288,9 +288,9 @@ dependencies = [
 
 [[package]]
 name = "qtty"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e37724c555d5c157a10522b8a09f4ab1f0fa4eb10d3107b1270b92ad56ba5aa"
+checksum = "43953c1990c78d8a98a3018f9b51071f12b478c4c519f2eaf7fff954b315d08e"
 dependencies = [
  "qtty-core",
  "qtty-derive",
@@ -298,9 +298,9 @@ dependencies = [
 
 [[package]]
 name = "qtty-core"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40d5237d4b90129f128f7d115ab7be10fc2dd6957a52900d75400253bd7c724b"
+checksum = "3abd20de3f1a4b6a4979f42f0032900b0ec030df95eaaa2b0294a2918107ffa6"
 dependencies = [
  "libm",
  "qtty-derive",
@@ -310,9 +310,9 @@ dependencies = [
 
 [[package]]
 name = "qtty-derive"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b53a35f7c86504e9f8db9273ec58bf541e35a34ef424cde04b4fbc8bb73bf63"
+checksum = "2ddc68ce74f35034435b61807f624f09001cbf68d3a0d4b1288d9cb68a40e1c2"
 dependencies = [
  "proc-macro2",
  "quote",
