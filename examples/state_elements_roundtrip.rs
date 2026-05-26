@@ -32,7 +32,7 @@ fn main() {
         Velocity::<Frame, KmPerSecond>::new(0.0, 7.2, 1.0),
     );
     let elements = KeplerianElements::from_cartesian(&state, mu).unwrap();
-    let back = elements.to_cartesian::<Center>(mu);
+    let back = elements.try_to_cartesian::<Center>(mu).unwrap();
     assert!((back.position().x().value() - state.position().x().value()).abs() < 1e-8);
     println!(
         "a = {:.3} km, e = {:.6}",

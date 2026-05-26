@@ -26,7 +26,8 @@ use super::izzo::{
 };
 
 /// Typed Lambert solution — departure / arrival velocities plus diagnostics.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TypedLambertSolution<F: ReferenceFrame> {
     /// Departure velocity at `r1`, in the same frame as the input positions.
     pub v1: Velocity<F, KmPerSecond>,

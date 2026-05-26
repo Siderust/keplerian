@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Vallés Puig, Ramon
 
 //! Analytic transfer and invariant helpers for two-body motion.
@@ -28,6 +28,23 @@ use qtty::Second;
 use crate::problem::KeplerProblem;
 use crate::state::CartesianState;
 use crate::vec3::{cross, norm};
+
+/// Errors returned by fallible transfer helpers.
+#[derive(Debug, Clone, Copy, PartialEq, thiserror::Error)]
+pub enum TransferError {
+    /// Gravitational parameter is not strictly positive or not finite.
+    #[error("invalid gravitational parameter: {0}")]
+    InvalidGravitationalParameter(f64),
+    /// A radius argument is not strictly positive or not finite.
+    #[error("invalid {0} radius: {1}")]
+    InvalidRadius(&'static str, f64),
+    /// Semi-major axis is not strictly positive or not finite.
+    #[error("invalid semi-major axis: {0}")]
+    InvalidSemiMajorAxis(f64),
+    /// Computation produced a non-finite result.
+    #[error("non-finite result")]
+    NonFiniteResult,
+}
 
 /// Result of an ideal coplanar Hohmann transfer between circular orbits.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -219,6 +236,172 @@ pub fn vis_viva_speed(mu: GravitationalParameter, r: Kilometers, a: Kilometers) 
 #[must_use]
 pub fn escape_speed(mu: GravitationalParameter, r: Kilometers) -> KmPerSeconds {
     KmPerSeconds::new((2.0 * mu.value() / r.value()).sqrt())
+}
+
+/// Fallible version of [`orbital_period`].
+///
+/// # Errors
+///
+/// Returns [`TransferError`] if `mu ≤ 0`, `a ≤ 0`, or the result is not finite.
+///
+/// # Examples
+///
+/// ```
+/// use keplerian::problem::KeplerProblem;
+/// use keplerian::transfer::try_orbital_period;
+/// use qtty::dynamics::GravitationalParameter;
+/// use qtty::length::Kilometers;
+///
+/// #[derive(Debug, Clone, Copy)] struct C; impl affn::centers::ReferenceCenter for C { type Params = (); fn center_name() -> &'static str { "C" } }
+/// #[derive(Debug, Clone, Copy)] struct F; impl affn::frames::ReferenceFrame for F { fn frame_name() -> &'static str { "F" } }
+///
+/// let p = KeplerProblem::<C, F>::new(GravitationalParameter::new(398600.4418));
+/// let t = try_orbital_period(&p, Kilometers::new(7000.0)).unwrap();
+/// assert!((t.value() - 5840.0).abs() < 200.0);
+/// ```
+pub fn try_orbital_period<C: ReferenceCenter, F: ReferenceFrame>(
+    problem: &KeplerProblem<C, F>,
+    semi_major_axis: Kilometers,
+) -> Result<Second, TransferError> {
+    let mu = problem.mu().value();
+    if !mu.is_finite() || mu <= 0.0 {
+        return Err(TransferError::InvalidGravitationalParameter(mu));
+    }
+    let a = semi_major_axis.value();
+    if !a.is_finite() || a <= 0.0 {
+        return Err(TransferError::InvalidSemiMajorAxis(a));
+    }
+    let t = 2.0 * core::f64::consts::PI * (a * a * a / mu).sqrt();
+    if !t.is_finite() {
+        return Err(TransferError::NonFiniteResult);
+    }
+    Ok(Second::new(t))
+}
+
+/// Fallible version of [`hohmann_delta_v`].
+///
+/// # Errors
+///
+/// Returns [`TransferError`] if inputs are non-positive or the result is not finite.
+///
+/// # Examples
+///
+/// ```
+/// use keplerian::transfer::try_hohmann_delta_v;
+/// use qtty::dynamics::GravitationalParameter;
+/// use qtty::length::Kilometers;
+///
+/// let h = try_hohmann_delta_v(
+///     GravitationalParameter::new(398600.4418),
+///     Kilometers::new(6678.0),
+///     Kilometers::new(42164.0),
+/// ).unwrap();
+/// assert!((h.total.value() - 3.91).abs() < 0.1);
+/// ```
+pub fn try_hohmann_delta_v(
+    mu: GravitationalParameter,
+    r1: Kilometers,
+    r2: Kilometers,
+) -> Result<HohmannResult, TransferError> {
+    let mu_val = mu.value();
+    if !mu_val.is_finite() || mu_val <= 0.0 {
+        return Err(TransferError::InvalidGravitationalParameter(mu_val));
+    }
+    let r1_val = r1.value();
+    if !r1_val.is_finite() || r1_val <= 0.0 {
+        return Err(TransferError::InvalidRadius("r1", r1_val));
+    }
+    let r2_val = r2.value();
+    if !r2_val.is_finite() || r2_val <= 0.0 {
+        return Err(TransferError::InvalidRadius("r2", r2_val));
+    }
+    let result = hohmann_delta_v(mu, r1, r2);
+    if !result.total.value().is_finite() {
+        return Err(TransferError::NonFiniteResult);
+    }
+    Ok(result)
+}
+
+/// Fallible version of [`vis_viva_speed`].
+///
+/// # Errors
+///
+/// Returns [`TransferError`] if inputs are non-positive or the result is not finite.
+///
+/// # Examples
+///
+/// ```
+/// use keplerian::transfer::try_vis_viva_speed;
+/// use qtty::dynamics::GravitationalParameter;
+/// use qtty::length::Kilometers;
+///
+/// let v = try_vis_viva_speed(
+///     GravitationalParameter::new(398600.4418),
+///     Kilometers::new(7000.0),
+///     Kilometers::new(7000.0),
+/// ).unwrap();
+/// assert!((v.value() - 7.546).abs() < 0.01);
+/// ```
+pub fn try_vis_viva_speed(
+    mu: GravitationalParameter,
+    r: Kilometers,
+    a: Kilometers,
+) -> Result<KmPerSeconds, TransferError> {
+    let mu_val = mu.value();
+    if !mu_val.is_finite() || mu_val <= 0.0 {
+        return Err(TransferError::InvalidGravitationalParameter(mu_val));
+    }
+    let r_val = r.value();
+    if !r_val.is_finite() || r_val <= 0.0 {
+        return Err(TransferError::InvalidRadius("r", r_val));
+    }
+    let a_val = a.value();
+    if !a_val.is_finite() || a_val == 0.0 {
+        return Err(TransferError::InvalidSemiMajorAxis(a_val));
+    }
+    let v = vis_viva_speed(mu, r, a);
+    if !v.value().is_finite() {
+        return Err(TransferError::NonFiniteResult);
+    }
+    Ok(v)
+}
+
+/// Fallible version of [`escape_speed`].
+///
+/// # Errors
+///
+/// Returns [`TransferError`] if inputs are non-positive or the result is not finite.
+///
+/// # Examples
+///
+/// ```
+/// use keplerian::transfer::try_escape_speed;
+/// use qtty::dynamics::GravitationalParameter;
+/// use qtty::length::Kilometers;
+///
+/// let v = try_escape_speed(
+///     GravitationalParameter::new(398600.4418),
+///     Kilometers::new(6378.0),
+/// ).unwrap();
+/// assert!((v.value() - 11.18).abs() < 0.1);
+/// ```
+pub fn try_escape_speed(
+    mu: GravitationalParameter,
+    r: Kilometers,
+) -> Result<KmPerSeconds, TransferError> {
+    let mu_val = mu.value();
+    if !mu_val.is_finite() || mu_val <= 0.0 {
+        return Err(TransferError::InvalidGravitationalParameter(mu_val));
+    }
+    let r_val = r.value();
+    if !r_val.is_finite() || r_val <= 0.0 {
+        return Err(TransferError::InvalidRadius("r", r_val));
+    }
+    let v = escape_speed(mu, r);
+    if !v.value().is_finite() {
+        return Err(TransferError::NonFiniteResult);
+    }
+    Ok(v)
 }
 
 #[cfg(test)]

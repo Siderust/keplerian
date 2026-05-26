@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Vallés Puig, Ramon
 
 //! Caller-driven Lambert transfer-grid search.
@@ -55,7 +55,7 @@ pub struct TransferCandidate<F: ReferenceFrame> {
     /// Arrival velocity from Lambert.
     pub v2: Velocity<F, KmPerSecond>,
     /// Sum of Lambert endpoint speed magnitudes.
-    pub total_dv: KmPerSeconds,
+    pub endpoint_speed_sum: KmPerSeconds,
 }
 
 /// Outcome stored for each search grid cell.
@@ -110,7 +110,7 @@ where
                                 flight_time: *tof,
                                 v1: sol.v1,
                                 v2: sol.v2,
-                                total_dv: KmPerSeconds::new(total),
+                                endpoint_speed_sum: KmPerSeconds::new(total),
                             })
                         }
                     },

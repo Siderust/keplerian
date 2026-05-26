@@ -7,8 +7,8 @@ use affn::frames::ReferenceFrame;
 use affn::frames::ICRS;
 use keplerian::anomaly::{
     eccentric_from_mean, hyperbolic_from_mean, hyperbolic_from_true, kepler_elliptic,
-    kepler_hyperbolic, kepler_parabolic, mean_from_hyperbolic, true_from_hyperbolic,
-    AnomalyOptions,
+    kepler_hyperbolic, mean_from_hyperbolic, parabolic_from_mean, true_from_hyperbolic,
+    AnomalyOptions, EccentricAnomaly, MeanAnomaly, ParabolicAnomaly, TrueAnomaly,
 };
 use keplerian::eccentricity::Eccentricity;
 use keplerian::elements::{ConversionError, KeplerianElements};
@@ -246,7 +246,7 @@ fn from_cartesian_equatorial_eccentric_orbit() {
 fn elliptic_circular_orbit_returns_mean_anomaly() {
     // e = 0 → E = M (identity)
     let zero = Eccentricity::new(0.0).unwrap();
-    let m = Radians::new(1.23);
+    let m = MeanAnomaly::from_value(1.23);
     let e = eccentric_from_mean(m, zero, AnomalyOptions::default()).unwrap();
     assert!((e.value() - m.value()).abs() < 1e-14);
 }
@@ -254,15 +254,20 @@ fn elliptic_circular_orbit_returns_mean_anomaly() {
 #[test]
 fn hyperbolic_mean_anomaly_zero_returns_zero() {
     let ecc = Eccentricity::new_unchecked(1.5);
-    let f = hyperbolic_from_mean(Radians::new(0.0), ecc, AnomalyOptions::default()).unwrap();
-    assert!((f).abs() < 1e-14);
+    let f = hyperbolic_from_mean(
+        MeanAnomaly::from_value(0.0),
+        ecc,
+        AnomalyOptions::default(),
+    )
+    .unwrap();
+    assert!(f.value().abs() < 1e-14);
 }
 
 #[test]
 fn hyperbolic_mean_anomaly_large_branch() {
     // |M| > 50 * e triggers the log initial guess branch.
     let ecc = Eccentricity::new_unchecked(1.2);
-    let m = Radians::new(100.0);
+    let m = MeanAnomaly::from_value(100.0);
     let f = hyperbolic_from_mean(m, ecc, AnomalyOptions::default());
     assert!(f.is_ok());
 }
@@ -270,34 +275,36 @@ fn hyperbolic_mean_anomaly_large_branch() {
 #[test]
 fn kepler_parabolic_round_trips() {
     let m = 0.5_f64;
-    let d = kepler_parabolic(m);
-    let m_back = d + d.powi(3) / 3.0;
+    let d = parabolic_from_mean(ParabolicAnomaly::new(m));
+    let m_back = d.value() + d.value().powi(3) / 3.0;
     assert!((m_back - m).abs() < 1e-12);
 }
 
 #[test]
 fn hyperbolic_anomaly_round_trips() {
     let ecc = Eccentricity::new_unchecked(2.0);
-    let nu = Radians::new(0.8);
+    let nu = TrueAnomaly::from_value(0.8);
     let f = hyperbolic_from_true(nu, ecc);
     let nu2 = true_from_hyperbolic(f, ecc);
     assert!((nu2.value() - nu.value()).abs() < 1e-12);
     let m = mean_from_hyperbolic(f, ecc);
     let f2 = hyperbolic_from_mean(m, ecc, AnomalyOptions::default()).unwrap();
-    assert!((f2 - f).abs() < 1e-12);
+    assert!((f2.value() - f.value()).abs() < 1e-12);
 }
 
 #[test]
 fn hyperbolic_kepler_rejects_nan_mean_anomaly() {
     let ecc = Eccentricity::new_unchecked(1.5);
-    let err = hyperbolic_from_mean(Radians::new(f64::NAN), ecc, AnomalyOptions::default());
+    let err =
+        hyperbolic_from_mean(MeanAnomaly::from_value(f64::NAN), ecc, AnomalyOptions::default());
     assert!(err.is_err());
 }
 
 #[test]
 fn elliptic_kepler_rejects_nan_mean_anomaly() {
     let ecc = Eccentricity::new_unchecked(0.5);
-    let err = eccentric_from_mean(Radians::new(f64::NAN), ecc, AnomalyOptions::default());
+    let err =
+        eccentric_from_mean(MeanAnomaly::from_value(f64::NAN), ecc, AnomalyOptions::default());
     assert!(err.is_err());
 }
 
@@ -491,7 +498,7 @@ fn from_cartesian_circular_inclined_orbit() {
 
 #[test]
 fn elements_to_cartesian_and_back() {
-    // Explicitly calls to_cartesian, covering its rotate_pqw invocations.
+    // Explicitly calls try_to_cartesian, covering its rotate_pqw invocations.
     let mu = GravitationalParameter::new(398600.4418);
     let el = KeplerianElements::<F>::new(
         Kilometers::new(7000.0),
@@ -502,46 +509,55 @@ fn elements_to_cartesian_and_back() {
         Radians::new(0.7),
     )
     .unwrap();
-    let state = el.to_cartesian::<C>(mu);
+    let state = el.try_to_cartesian::<C>(mu).unwrap();
     assert!(state.position().x().value().is_finite());
 }
 
 // ── anomaly.rs: bisection fallback paths ─────────────────────────────────────
 
 #[test]
-fn elliptic_bisection_fallback_with_zero_tol() {
-    // max_iter = 2, tol = 0.0: Newton fails to reach exact zero residual,
-    // triggers bisection, exercises lines 110-112 and 421-429.
+fn elliptic_bisection_fallback() {
+    // max_iter = 2, very tight tol: Newton unlikely to reach exact zero residual,
+    // triggers bisection, exercises bisection code path.
     let ecc = Eccentricity::new_unchecked(0.5);
-    let opts = AnomalyOptions {
-        max_iter: 2,
-        tol: 0.0,
-    };
-    let result = kepler_elliptic(Radians::new(1.0), ecc, opts);
+    let opts = AnomalyOptions::try_new(2, 1e-300).unwrap();
+    let result = kepler_elliptic(MeanAnomaly::from_value(1.0), ecc, opts);
     // Either converges or not, but the code paths are exercised.
     let _ = result;
 }
 
 #[test]
-fn hyperbolic_bisection_fallback_with_zero_tol() {
-    // max_iter = 2, tol = 0.0: exercises hyperbolic bisection lines.
+fn hyperbolic_bisection_fallback() {
+    // max_iter = 2, very tight tol: exercises hyperbolic bisection lines.
     let ecc = Eccentricity::new_unchecked(1.5);
-    let opts = AnomalyOptions {
-        max_iter: 2,
-        tol: 0.0,
-    };
-    let result = kepler_hyperbolic(Radians::new(1.0), ecc, opts);
+    let opts = AnomalyOptions::try_new(2, 1e-300).unwrap();
+    let result = kepler_hyperbolic(MeanAnomaly::from_value(1.0), ecc, opts);
     let _ = result;
 }
 
 #[test]
 fn hyperbolic_bisection_large_mean_anomaly() {
-    // Large |M| triggers the upper-bracket expansion loop (lines 459-460).
+    // Large |M| triggers the upper-bracket expansion loop.
     let ecc = Eccentricity::new_unchecked(1.1);
-    let opts = AnomalyOptions {
-        max_iter: 2,
-        tol: 0.0,
-    };
-    let result = kepler_hyperbolic(Radians::new(50.0), ecc, opts);
+    let opts = AnomalyOptions::try_new(2, 1e-300).unwrap();
+    let result = kepler_hyperbolic(MeanAnomaly::from_value(50.0), ecc, opts);
     let _ = result;
+}
+
+// ── anomaly.rs: typed newtype accessors ───────────────────────────────────────
+
+#[test]
+fn anomaly_newtypes_round_trip() {
+    let ea = EccentricAnomaly::from_value(1.2);
+    assert_eq!(ea.value(), 1.2);
+    assert_eq!(ea.radians().value(), 1.2);
+
+    let ta = TrueAnomaly::from_value(0.5);
+    assert_eq!(ta.value(), 0.5);
+
+    let ma = MeanAnomaly::from_value(0.8);
+    assert_eq!(ma.value(), 0.8);
+
+    let pa = ParabolicAnomaly::new(0.3);
+    assert_eq!(pa.value(), 0.3);
 }

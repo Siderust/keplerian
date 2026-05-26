@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Vallés Puig, Ramon
 
 //! Typed central-force two-body propagation context.
@@ -26,7 +26,7 @@ use qtty::Second;
 
 use crate::anomaly::{
     hyperbolic_from_mean, hyperbolic_from_true, mean_from_hyperbolic, mean_from_true,
-    true_from_hyperbolic, true_from_mean, AnomalyError, AnomalyOptions,
+    true_from_hyperbolic, true_from_mean, AnomalyError, AnomalyOptions, MeanAnomaly, TrueAnomaly,
 };
 use crate::elements::{ConicRegime, ConversionError, KeplerianElements};
 use crate::state::CartesianState;
@@ -51,8 +51,7 @@ pub enum PropagationError {
 /// A central-force Kepler problem for a center/frame pair.
 #[derive(Debug, Clone, Copy)]
 pub struct KeplerProblem<C: ReferenceCenter, F: ReferenceFrame> {
-    /// Standard gravitational parameter of the central potential.
-    pub mu: GravitationalParameter,
+    mu: GravitationalParameter,
     _marker: PhantomData<(C, F)>,
 }
 
@@ -133,15 +132,15 @@ impl<C: ReferenceCenter, F: ReferenceFrame> KeplerProblem<C, F> {
         let true_anomaly = match el.conic_kind() {
             ConicRegime::Elliptic => {
                 let n = (self.mu.value() / (a * a * a)).sqrt();
-                let m = mean_from_true(el.true_anomaly, el.eccentricity)
-                    + qtty::angular::Radians::new(n * dt.value());
+                let m0 = mean_from_true(TrueAnomaly::new(el.true_anomaly), el.eccentricity);
+                let m = MeanAnomaly::from_value(m0.value() + n * dt.value());
                 true_from_mean(m, el.eccentricity, AnomalyOptions::default())?
             }
             ConicRegime::Hyperbolic => {
                 let n = (-self.mu.value() / (a * a * a)).sqrt();
-                let f0 = hyperbolic_from_true(el.true_anomaly, el.eccentricity);
-                let m = mean_from_hyperbolic(f0, el.eccentricity)
-                    + qtty::angular::Radians::new(n * dt.value());
+                let f0 = hyperbolic_from_true(TrueAnomaly::new(el.true_anomaly), el.eccentricity);
+                let m0 = mean_from_hyperbolic(f0, el.eccentricity);
+                let m = MeanAnomaly::from_value(m0.value() + n * dt.value());
                 true_from_hyperbolic(
                     hyperbolic_from_mean(m, el.eccentricity, AnomalyOptions::default())?,
                     el.eccentricity,
@@ -155,9 +154,9 @@ impl<C: ReferenceCenter, F: ReferenceFrame> KeplerProblem<C, F> {
             el.inclination,
             el.raan,
             el.arg_periapsis,
-            true_anomaly,
+            true_anomaly.radians(),
         )?;
-        Ok(next.to_cartesian::<C>(self.mu))
+        Ok(next.try_to_cartesian::<C>(self.mu)?)
     }
 }
 
