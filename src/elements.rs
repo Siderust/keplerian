@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Vallés Puig, Ramon
 
 //! Typed Keplerian orbital elements and Cartesian conversions.
@@ -33,18 +33,9 @@ use crate::eccentricity::Eccentricity;
 use crate::state::CartesianState;
 use crate::vec3::{cross, dot, norm, scale, sub};
 
-const EPS: f64 = 1.0e-10;
+pub use crate::eccentricity::ConicRegime;
 
-/// Conic regime classified by eccentricity.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ConicRegime {
-    /// Bounded ellipse, `0 ≤ e < 1`.
-    Elliptic,
-    /// Parabola, `e = 1` within numerical tolerance.
-    Parabolic,
-    /// Unbounded hyperbola, `e > 1`.
-    Hyperbolic,
-}
+const EPS: f64 = 1.0e-10;
 
 /// Errors returned by element validation and Cartesian conversion.
 #[derive(Debug, Clone, Copy, PartialEq, thiserror::Error)]
@@ -66,6 +57,14 @@ pub enum ConversionError {
     /// The conversion encountered a degenerate geometry.
     #[error("degenerate orbital geometry: {0}")]
     Degenerate(&'static str),
+    /// Semi-major axis sign is inconsistent with the eccentricity regime.
+    #[error("semi-major axis {sma} km is incoherent with eccentricity {ecc}")]
+    IncoherentRegime {
+        /// Semi-major axis value.
+        sma: f64,
+        /// Eccentricity value.
+        ecc: f64,
+    },
 }
 
 /// Classical Keplerian elements with typed distance and angular quantities.
@@ -135,6 +134,14 @@ impl<F: ReferenceFrame> KeplerianElements<F> {
         if !(0.0..=PI).contains(&inclination.value()) {
             return Err(ConversionError::InvalidInclination(inclination.value()));
         }
+        let e = eccentricity.value();
+        let a = semi_major_axis.value();
+        if e < 1.0 - EPS && a <= 0.0 {
+            return Err(ConversionError::IncoherentRegime { sma: a, ecc: e });
+        }
+        if e > 1.0 + EPS && a >= 0.0 {
+            return Err(ConversionError::IncoherentRegime { sma: a, ecc: e });
+        }
         Ok(Self {
             semi_major_axis,
             eccentricity,
@@ -160,6 +167,11 @@ impl<F: ReferenceFrame> KeplerianElements<F> {
 
     /// Converts elements to a typed Cartesian state.
     ///
+    /// # Errors
+    ///
+    /// Returns [`ConversionError`] if `mu ≤ 0`, semi-latus rectum `p ≤ 0`, or
+    /// the orbit denominator `1 + e cos(ν) ≤ ε`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -181,22 +193,35 @@ impl<F: ReferenceFrame> KeplerianElements<F> {
     ///     Radians::new(0.0),
     ///     Radians::new(0.0),
     /// ).unwrap();
-    /// let state = el.to_cartesian::<C>(GravitationalParameter::new(398600.4418));
+    /// let state = el.try_to_cartesian::<C>(GravitationalParameter::new(398600.4418)).unwrap();
     /// let r = state.position();
     /// assert!((r.x().value().hypot(r.y().value()).hypot(r.z().value()) - 7000.0).abs() < 1.0);
     /// ```
-    #[must_use]
-    pub fn to_cartesian<C: ReferenceCenter<Params = ()>>(
+    pub fn try_to_cartesian<C: ReferenceCenter<Params = ()>>(
         &self,
         mu: GravitationalParameter,
-    ) -> CartesianState<C, F> {
+    ) -> Result<CartesianState<C, F>, ConversionError> {
+        let mu_val = mu.value();
+        if !mu_val.is_finite() || mu_val <= 0.0 {
+            return Err(ConversionError::Degenerate(
+                "non-positive or non-finite gravitational parameter",
+            ));
+        }
         let a = self.semi_major_axis.value();
         let e = self.eccentricity.value();
         let nu = self.true_anomaly.value();
         let p = a * (1.0 - e * e);
+        if p <= 0.0 {
+            return Err(ConversionError::Degenerate(
+                "non-positive semi-latus rectum",
+            ));
+        }
         let denom = 1.0 + e * nu.cos();
+        if denom <= EPS {
+            return Err(ConversionError::Degenerate("degenerate orbit denominator"));
+        }
         let r = p / denom;
-        let root = (mu.value() / p).sqrt();
+        let root = (mu_val / p).sqrt();
         let r_pqw = [r * nu.cos(), r * nu.sin(), 0.0];
         let v_pqw = [-root * nu.sin(), root * (e + nu.cos()), 0.0];
         let r_ijk = rotate_pqw(
@@ -211,10 +236,10 @@ impl<F: ReferenceFrame> KeplerianElements<F> {
             self.inclination.value(),
             self.arg_periapsis.value(),
         );
-        CartesianState::new(
+        Ok(CartesianState::new(
             Position::<C, F, Kilometer>::new(r_ijk[0], r_ijk[1], r_ijk[2]),
             Velocity::<F, KmPerSecond>::new(v_ijk[0], v_ijk[1], v_ijk[2]),
-        )
+        ))
     }
 
     /// Converts a typed Cartesian state into classical Keplerian elements.
@@ -395,10 +420,218 @@ mod tests {
             Radians::new(1.1),
         )
         .unwrap();
-        let st = el.to_cartesian::<Center>(GravitationalParameter::new(398600.4418));
+        let st = el
+            .try_to_cartesian::<Center>(GravitationalParameter::new(398600.4418))
+            .unwrap();
         let back = KeplerianElements::from_cartesian(&st, GravitationalParameter::new(398600.4418))
             .unwrap();
         assert!((back.semi_major_axis.value() - el.semi_major_axis.value()).abs() < 1e-8);
         assert!((back.eccentricity.value() - el.eccentricity.value()).abs() < 1e-12);
+    }
+
+    #[test]
+    fn new_rejects_negative_eccentricity() {
+        let err = KeplerianElements::<Frame>::new(
+            Kilometers::new(7000.0),
+            Eccentricity::new_unchecked(-0.1),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+        );
+        assert!(matches!(err, Err(ConversionError::InvalidEccentricity(_))));
+    }
+
+    #[test]
+    fn new_rejects_inclination_out_of_range() {
+        let err = KeplerianElements::<Frame>::new(
+            Kilometers::new(7000.0),
+            Eccentricity::new_unchecked(0.1),
+            Radians::new(PI + 0.1),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+        );
+        assert!(matches!(err, Err(ConversionError::InvalidInclination(_))));
+    }
+
+    #[test]
+    fn conic_kind_classifies_parabolic_and_hyperbolic() {
+        let parabolic = KeplerianElements::<Frame>::new(
+            Kilometers::new(7000.0),
+            Eccentricity::new_unchecked(1.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+        )
+        .unwrap();
+        assert_eq!(parabolic.conic_kind(), ConicRegime::Parabolic);
+
+        let hyperbolic = KeplerianElements::<Frame>::new(
+            Kilometers::new(-40000.0),
+            Eccentricity::new_unchecked(1.5),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+        )
+        .unwrap();
+        assert_eq!(hyperbolic.conic_kind(), ConicRegime::Hyperbolic);
+    }
+
+    #[test]
+    fn from_cartesian_rejects_degenerate_states() {
+        let mu = GravitationalParameter::new(398600.4418);
+        let zero_position = CartesianState::<Center, Frame>::new(
+            Position::<Center, Frame, Kilometer>::new(0.0, 0.0, 0.0),
+            Velocity::<Frame, KmPerSecond>::new(0.0, 7.5, 0.0),
+        );
+        assert!(KeplerianElements::<Frame>::from_cartesian(&zero_position, mu).is_err());
+
+        let zero_angular_momentum = CartesianState::<Center, Frame>::new(
+            Position::<Center, Frame, Kilometer>::new(7000.0, 0.0, 0.0),
+            Velocity::<Frame, KmPerSecond>::new(7.5, 0.0, 0.0),
+        );
+        assert!(KeplerianElements::<Frame>::from_cartesian(&zero_angular_momentum, mu).is_err());
+    }
+
+    #[test]
+    fn from_cartesian_equatorial_eccentric_orbit() {
+        let mu = GravitationalParameter::new(398600.4418);
+        let state = CartesianState::<Center, Frame>::new(
+            Position::<Center, Frame, Kilometer>::new(7000.0, 0.0, 0.0),
+            Velocity::<Frame, KmPerSecond>::new(0.0, 6.5, 0.0),
+        );
+        let el = KeplerianElements::<Frame>::from_cartesian(&state, mu);
+        assert!(el.is_ok(), "{el:?}");
+    }
+
+    #[test]
+    fn new_rejects_incoherent_regime_signs() {
+        let elliptic = KeplerianElements::<Frame>::new(
+            Kilometers::new(-7000.0),
+            Eccentricity::new_unchecked(0.5),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+        );
+        assert!(matches!(
+            elliptic,
+            Err(ConversionError::IncoherentRegime { .. })
+        ));
+
+        let hyperbolic = KeplerianElements::<Frame>::new(
+            Kilometers::new(7000.0),
+            Eccentricity::new_unchecked(1.5),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+        );
+        assert!(matches!(
+            hyperbolic,
+            Err(ConversionError::IncoherentRegime { .. })
+        ));
+    }
+
+    #[test]
+    fn try_to_cartesian_rejects_invalid_mu_and_degenerate_geometry() {
+        let el = KeplerianElements::<Frame>::new(
+            Kilometers::new(-10000.0),
+            Eccentricity::new_unchecked(1.5),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+        )
+        .unwrap();
+        assert!(matches!(
+            el.try_to_cartesian::<Center>(GravitationalParameter::new(-1.0)),
+            Err(ConversionError::Degenerate(_))
+        ));
+
+        let parabolic = KeplerianElements::<Frame>::new(
+            Kilometers::new(7000.0),
+            Eccentricity::new_unchecked(1.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+        )
+        .unwrap();
+        assert!(matches!(
+            parabolic.try_to_cartesian::<Center>(GravitationalParameter::new(398600.4418)),
+            Err(ConversionError::Degenerate(_))
+        ));
+    }
+
+    #[test]
+    fn try_to_cartesian_rejects_degenerate_orbit_denominator() {
+        let nu = (-1.0_f64 / 1.5).acos();
+        let el = KeplerianElements::<Frame>::new(
+            Kilometers::new(-10000.0),
+            Eccentricity::new_unchecked(1.5),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(0.0),
+            Radians::new(nu),
+        )
+        .unwrap();
+        assert!(el
+            .try_to_cartesian::<Center>(GravitationalParameter::new(398600.4418))
+            .is_err());
+    }
+
+    #[test]
+    fn from_cartesian_rejects_invalid_mu() {
+        let state = CartesianState::<Center, Frame>::new(
+            Position::<Center, Frame, Kilometer>::new(7000.0, 0.0, 0.0),
+            Velocity::<Frame, KmPerSecond>::new(0.0, 7.5, 0.0),
+        );
+        assert!(KeplerianElements::<Frame>::from_cartesian(
+            &state,
+            GravitationalParameter::new(-1.0)
+        )
+        .is_err());
+        assert!(matches!(
+            KeplerianElements::<Frame>::from_cartesian(
+                &state,
+                GravitationalParameter::new(f64::NAN)
+            ),
+            Err(ConversionError::NonFiniteValue { .. })
+        ));
+    }
+
+    #[test]
+    fn from_cartesian_circular_inclined_orbit() {
+        let mu = GravitationalParameter::new(398600.4418);
+        let r = 7000.0_f64;
+        let v_circ = (mu.value() / r).sqrt();
+        let vy = v_circ * core::f64::consts::FRAC_1_SQRT_2;
+        let vz = v_circ * core::f64::consts::FRAC_1_SQRT_2;
+        let state = CartesianState::<Center, Frame>::new(
+            Position::<Center, Frame, Kilometer>::new(r, 0.0, 0.0),
+            Velocity::<Frame, KmPerSecond>::new(0.0, vy, vz),
+        );
+        let el = KeplerianElements::<Frame>::from_cartesian(&state, mu);
+        assert!(el.is_ok(), "{el:?}");
+    }
+
+    #[test]
+    fn try_to_cartesian_produces_finite_state() {
+        let mu = GravitationalParameter::new(398600.4418);
+        let el = KeplerianElements::<Frame>::new(
+            Kilometers::new(7000.0),
+            Eccentricity::new_unchecked(0.1),
+            Radians::new(0.5),
+            Radians::new(1.0),
+            Radians::new(0.3),
+            Radians::new(0.7),
+        )
+        .unwrap();
+        let state = el.try_to_cartesian::<Center>(mu).unwrap();
+        assert!(state.position().x().value().is_finite());
     }
 }

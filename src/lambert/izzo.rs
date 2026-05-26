@@ -25,6 +25,7 @@ use super::error::LambertError;
 
 /// Direction of revolution about the central body.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum LambertBranch {
     /// Prograde (counter-clockwise as seen from `+z`).
     Prograde,
@@ -34,6 +35,7 @@ pub enum LambertBranch {
 
 /// Side selection for the multi-revolution branch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum NRevBranch {
     /// Low-energy / short-period side (smaller semi-major axis).
     Left,
@@ -42,7 +44,8 @@ pub enum NRevBranch {
 }
 
 /// Diagnostics produced by a single Lambert solve.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct LambertDiagnostics {
     /// Householder iterations consumed before convergence.
     pub iterations: u32,

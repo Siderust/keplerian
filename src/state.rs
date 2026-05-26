@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Vallés Puig, Ramon
 
 //! Typed Cartesian two-body state vectors.
@@ -106,5 +106,26 @@ mod tests {
         );
         assert_eq!(s.position().z().value(), 3.0);
         assert_eq!(s.velocity().x().value(), 4.0);
+    }
+
+    #[test]
+    fn clone_preserves_velocity() {
+        let s = CartesianState::<TestCenter, TestFrame>::new(
+            Position::<TestCenter, TestFrame, Kilometer>::new(7000.0, 0.0, 0.0),
+            Velocity::<TestFrame, KmPerSecond>::new(0.0, 7.5, 0.0),
+        );
+        #[allow(clippy::clone_on_copy)]
+        let s2 = Clone::clone(&s);
+        assert_eq!(s2.velocity().x().value(), 0.0);
+        assert_eq!(s2.velocity().y().value(), 7.5);
+    }
+
+    #[test]
+    fn velocity_accessor_returns_velocity() {
+        let s = CartesianState::<TestCenter, TestFrame>::new(
+            Position::<TestCenter, TestFrame, Kilometer>::new(1.0, 2.0, 3.0),
+            Velocity::<TestFrame, KmPerSecond>::new(4.0, 5.0, 6.0),
+        );
+        assert_eq!(s.velocity().z().value(), 6.0);
     }
 }

@@ -12,7 +12,8 @@
 //! - Izzo, D. (2014). *Revisiting Lambert's Problem*.
 
 /// Errors returned by the Lambert solver.
-#[derive(Debug, thiserror::Error, PartialEq)]
+#[derive(Debug, Clone, thiserror::Error, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum LambertError {
     /// Gravitational parameter must be strictly positive (km³/s²).
     #[error("non-positive gravitational parameter ({0})")]

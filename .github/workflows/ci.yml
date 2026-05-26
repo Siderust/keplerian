@@ -24,6 +24,8 @@ jobs:
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo check --no-default-features
       - run: cargo check --no-default-features --features alloc
+      - run: cargo check --no-default-features --features serde
+      - run: cargo check --no-default-features --features alloc,serde
 
   test:
     name: Test

@@ -26,7 +26,8 @@ use super::izzo::{
 };
 
 /// Typed Lambert solution — departure / arrival velocities plus diagnostics.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TypedLambertSolution<F: ReferenceFrame> {
     /// Departure velocity at `r1`, in the same frame as the input positions.
     pub v1: Velocity<F, KmPerSecond>,
@@ -209,5 +210,32 @@ mod tests {
             }
             other => panic!("unexpected error: {other:?}"),
         }
+    }
+
+    #[test]
+    fn n_rev_valid_geometry_paths_are_exercised() {
+        let r1 = Position::<(), ICRS, Kilometer>::new(7000.0, 0.0, 0.0);
+        let r2 = Position::<(), ICRS, Kilometer>::new(0.0, 7000.0, 0.0);
+        let tof = Second::new(10800.0);
+        let mu = GravitationalParameter::new(398600.4418);
+
+        let _ = lambert_n_rev(
+            r1,
+            r2,
+            tof,
+            mu,
+            LambertBranch::Prograde,
+            1,
+            NRevBranch::Left,
+        );
+        let _ = lambert_n_rev(
+            r1,
+            r2,
+            tof,
+            mu,
+            LambertBranch::Retrograde,
+            1,
+            NRevBranch::Right,
+        );
     }
 }
