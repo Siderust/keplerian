@@ -211,4 +211,31 @@ mod tests {
             other => panic!("unexpected error: {other:?}"),
         }
     }
+
+    #[test]
+    fn n_rev_valid_geometry_paths_are_exercised() {
+        let r1 = Position::<(), ICRS, Kilometer>::new(7000.0, 0.0, 0.0);
+        let r2 = Position::<(), ICRS, Kilometer>::new(0.0, 7000.0, 0.0);
+        let tof = Second::new(10800.0);
+        let mu = GravitationalParameter::new(398600.4418);
+
+        let _ = lambert_n_rev(
+            r1,
+            r2,
+            tof,
+            mu,
+            LambertBranch::Prograde,
+            1,
+            NRevBranch::Left,
+        );
+        let _ = lambert_n_rev(
+            r1,
+            r2,
+            tof,
+            mu,
+            LambertBranch::Retrograde,
+            1,
+            NRevBranch::Right,
+        );
+    }
 }

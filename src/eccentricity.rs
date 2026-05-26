@@ -250,3 +250,98 @@ impl Eccentricity {
         self.0 > 1.0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_hyperbolic_classifies_strictly_above_one() {
+        assert!(Eccentricity::new_unchecked(1.5).is_hyperbolic());
+        assert!(!Eccentricity::new_unchecked(0.5).is_hyperbolic());
+    }
+
+    #[test]
+    fn try_new_accepts_valid_values() {
+        let e = Eccentricity::try_new(0.5).unwrap();
+        assert!((e.value() - 0.5).abs() < 1e-15);
+        assert_eq!(Eccentricity::try_new(0.0).unwrap().value(), 0.0);
+    }
+
+    #[test]
+    fn try_new_rejects_invalid_values() {
+        assert!(matches!(
+            Eccentricity::try_new(-0.1),
+            Err(EccentricityError::Negative(_))
+        ));
+        assert!(matches!(
+            Eccentricity::try_new(f64::NAN),
+            Err(EccentricityError::NotFinite(_))
+        ));
+        assert!(matches!(
+            Eccentricity::try_new(f64::INFINITY),
+            Err(EccentricityError::NotFinite(_))
+        ));
+    }
+
+    #[test]
+    fn new_elliptic_validates_regime() {
+        let e = Eccentricity::new_elliptic(0.3).unwrap();
+        assert!((e.value() - 0.3).abs() < 1e-15);
+        assert!(matches!(
+            Eccentricity::new_elliptic(1.0),
+            Err(EccentricityError::NotElliptic(_))
+        ));
+        assert!(matches!(
+            Eccentricity::new_elliptic(1.5),
+            Err(EccentricityError::NotElliptic(_))
+        ));
+        assert!(matches!(
+            Eccentricity::new_elliptic(-0.1),
+            Err(EccentricityError::Negative(_))
+        ));
+    }
+
+    #[test]
+    fn new_hyperbolic_validates_regime() {
+        let e = Eccentricity::new_hyperbolic(1.5).unwrap();
+        assert!((e.value() - 1.5).abs() < 1e-15);
+        assert!(matches!(
+            Eccentricity::new_hyperbolic(1.0),
+            Err(EccentricityError::NotHyperbolic(_))
+        ));
+        assert!(matches!(
+            Eccentricity::new_hyperbolic(0.5),
+            Err(EccentricityError::NotHyperbolic(_))
+        ));
+        assert!(matches!(
+            Eccentricity::new_hyperbolic(f64::NAN),
+            Err(EccentricityError::NotFinite(_))
+        ));
+    }
+
+    #[test]
+    fn parabolic_constructor_is_exactly_one() {
+        assert_eq!(Eccentricity::parabolic().value(), 1.0);
+    }
+
+    #[test]
+    fn classify_uses_tolerance_band() {
+        assert_eq!(
+            Eccentricity::new_unchecked(0.5).classify(1e-10),
+            ConicRegime::Elliptic
+        );
+        assert_eq!(
+            Eccentricity::new_unchecked(1.0).classify(1e-10),
+            ConicRegime::Parabolic
+        );
+        assert_eq!(
+            Eccentricity::new_unchecked(1.0 + 5e-11).classify(1e-10),
+            ConicRegime::Parabolic
+        );
+        assert_eq!(
+            Eccentricity::new_unchecked(1.5).classify(1e-10),
+            ConicRegime::Hyperbolic
+        );
+    }
+}

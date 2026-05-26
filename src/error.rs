@@ -57,3 +57,36 @@ impl From<lambert::LambertError> for KeplerError {
         Self::Lambert(value)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn kepler_error_from_anomaly() {
+        let inner = anomaly::AnomalyError::InvalidEccentricity(1.5);
+        let e = KeplerError::from(inner);
+        assert!(matches!(e, KeplerError::Anomaly(_)));
+    }
+
+    #[test]
+    fn kepler_error_from_conversion() {
+        let inner = elements::ConversionError::InvalidEccentricity(-1.0);
+        let e = KeplerError::from(inner);
+        assert!(matches!(e, KeplerError::Conversion(_)));
+    }
+
+    #[test]
+    fn kepler_error_from_propagation() {
+        let inner = problem::PropagationError::ParabolicUnsupported;
+        let e = KeplerError::from(inner);
+        assert!(matches!(e, KeplerError::Propagation(_)));
+    }
+
+    #[test]
+    fn kepler_error_from_lambert() {
+        let inner = lambert::LambertError::ZeroPosition;
+        let e = KeplerError::from(inner);
+        assert!(matches!(e, KeplerError::Lambert(_)));
+    }
+}

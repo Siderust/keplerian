@@ -188,4 +188,85 @@ mod tests {
         assert_eq!(out.cells[0].len(), 1);
         assert!(matches!(out.cells[0][0], CellOutcome::ProviderFailed(_)));
     }
+
+    struct FixedProvider {
+        pos: [f64; 3],
+    }
+    impl TrajectoryProvider<C, F> for FixedProvider {
+        type Error = &'static str;
+        fn position_at(&self, _: Second) -> Result<Position<C, F, Kilometer>, Self::Error> {
+            Ok(Position::<C, F, Kilometer>::new(
+                self.pos[0],
+                self.pos[1],
+                self.pos[2],
+            ))
+        }
+    }
+
+    #[test]
+    fn search_success_covers_speed_helper() {
+        let grid = SearchGrid {
+            departures: alloc::vec![Second::new(0.0)],
+            flight_times: alloc::vec![Second::new(4560.0)],
+        };
+        let out = lambert_search(
+            &FixedProvider {
+                pos: [15945.34, 0.0, 0.0],
+            },
+            &FixedProvider {
+                pos: [12214.84, 10249.47, 0.0],
+            },
+            grid,
+            GravitationalParameter::new(398600.4418),
+            LambertBranch::Prograde,
+        );
+        assert_eq!(out.cells.len(), 1);
+        assert!(matches!(out.cells[0][0], CellOutcome::Success(_)));
+    }
+
+    struct TargetFails;
+    impl TrajectoryProvider<C, F> for TargetFails {
+        type Error = &'static str;
+        fn position_at(&self, _: Second) -> Result<Position<C, F, Kilometer>, Self::Error> {
+            Err("target down")
+        }
+    }
+
+    #[test]
+    fn search_target_provider_failure() {
+        let grid = SearchGrid {
+            departures: alloc::vec![Second::new(0.0)],
+            flight_times: alloc::vec![Second::new(4560.0)],
+        };
+        let out = lambert_search(
+            &FixedProvider {
+                pos: [15945.34, 0.0, 0.0],
+            },
+            &TargetFails,
+            grid,
+            GravitationalParameter::new(398600.4418),
+            LambertBranch::Prograde,
+        );
+        assert!(matches!(out.cells[0][0], CellOutcome::ProviderFailed(_)));
+    }
+
+    #[test]
+    fn search_lambert_failed_cell() {
+        let grid = SearchGrid {
+            departures: alloc::vec![Second::new(0.0)],
+            flight_times: alloc::vec![Second::new(4560.0)],
+        };
+        let out = lambert_search(
+            &FixedProvider {
+                pos: [0.0, 0.0, 0.0],
+            },
+            &FixedProvider {
+                pos: [0.0, 0.0, 0.0],
+            },
+            grid,
+            GravitationalParameter::new(398600.4418),
+            LambertBranch::Prograde,
+        );
+        assert!(matches!(out.cells[0][0], CellOutcome::LambertFailed(_)));
+    }
 }

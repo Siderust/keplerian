@@ -451,4 +451,125 @@ mod tests {
         );
         assert!((specific_angular_momentum(&s).value() - 52500.0).abs() < 1e-12);
     }
+
+    #[test]
+    fn specific_orbital_energy_and_period() {
+        let mu = GravitationalParameter::new(398600.4418);
+        let problem = KeplerProblem::<C, F>::new(mu);
+        let state = CartesianState::<C, F>::new(
+            Position::<C, F, Kilometer>::new(7000.0, 0.0, 0.0),
+            Velocity::<F, KmPerSecond>::new(0.0, 7.546, 0.0),
+        );
+
+        assert!(specific_orbital_energy(&state, mu).value() < 0.0);
+        assert!(specific_angular_momentum(&state).value() > 0.0);
+
+        let t = orbital_period(&problem, Kilometers::new(7000.0)).unwrap();
+        assert!((t.value() - 5840.0).abs() < 200.0);
+    }
+
+    #[test]
+    fn orbital_period_negative_sma_returns_none() {
+        let problem = KeplerProblem::<C, F>::new(GravitationalParameter::new(398600.4418));
+        assert!(orbital_period(&problem, Kilometers::new(-7000.0)).is_none());
+    }
+
+    #[test]
+    fn try_orbital_period_validates_inputs() {
+        let problem = KeplerProblem::<C, F>::new(GravitationalParameter::new(398600.4418));
+        let t = try_orbital_period(&problem, Kilometers::new(7000.0)).unwrap();
+        assert!((t.value() - 5840.0).abs() < 200.0);
+        assert!(matches!(
+            try_orbital_period(&problem, Kilometers::new(0.0)),
+            Err(TransferError::InvalidSemiMajorAxis(_))
+        ));
+        assert!(matches!(
+            try_orbital_period(&problem, Kilometers::new(-7000.0)),
+            Err(TransferError::InvalidSemiMajorAxis(_))
+        ));
+    }
+
+    #[test]
+    fn try_hohmann_delta_v_validates_inputs() {
+        let mu = GravitationalParameter::new(398600.4418);
+        let result =
+            try_hohmann_delta_v(mu, Kilometers::new(6678.0), Kilometers::new(42164.0)).unwrap();
+        assert!((result.total.value() - 3.91).abs() < 0.3);
+
+        assert!(matches!(
+            try_hohmann_delta_v(
+                GravitationalParameter::new(-1.0),
+                Kilometers::new(6678.0),
+                Kilometers::new(42164.0)
+            ),
+            Err(TransferError::InvalidGravitationalParameter(_))
+        ));
+        assert!(matches!(
+            try_hohmann_delta_v(
+                GravitationalParameter::new(0.0),
+                Kilometers::new(6678.0),
+                Kilometers::new(42164.0)
+            ),
+            Err(TransferError::InvalidGravitationalParameter(_))
+        ));
+        assert!(matches!(
+            try_hohmann_delta_v(mu, Kilometers::new(0.0), Kilometers::new(42164.0)),
+            Err(TransferError::InvalidRadius(_, _))
+        ));
+        assert!(matches!(
+            try_hohmann_delta_v(mu, Kilometers::new(-6678.0), Kilometers::new(42164.0)),
+            Err(TransferError::InvalidRadius(_, _))
+        ));
+        assert!(matches!(
+            try_hohmann_delta_v(mu, Kilometers::new(6678.0), Kilometers::new(-1.0)),
+            Err(TransferError::InvalidRadius(_, _))
+        ));
+    }
+
+    #[test]
+    fn try_vis_viva_speed_validates_inputs() {
+        let mu = GravitationalParameter::new(398600.4418);
+        let v = try_vis_viva_speed(mu, Kilometers::new(7000.0), Kilometers::new(7000.0)).unwrap();
+        assert!((v.value() - 7.546).abs() < 0.05);
+
+        assert!(matches!(
+            try_vis_viva_speed(
+                GravitationalParameter::new(-1.0),
+                Kilometers::new(7000.0),
+                Kilometers::new(7000.0)
+            ),
+            Err(TransferError::InvalidGravitationalParameter(_))
+        ));
+        assert!(matches!(
+            try_vis_viva_speed(mu, Kilometers::new(0.0), Kilometers::new(7000.0)),
+            Err(TransferError::InvalidRadius(_, _))
+        ));
+        assert!(matches!(
+            try_vis_viva_speed(mu, Kilometers::new(7000.0), Kilometers::new(0.0)),
+            Err(TransferError::InvalidSemiMajorAxis(_))
+        ));
+    }
+
+    #[test]
+    fn try_escape_speed_validates_inputs() {
+        let mu = GravitationalParameter::new(398600.4418);
+        let v = try_escape_speed(mu, Kilometers::new(6378.0)).unwrap();
+        assert!((v.value() - 11.18).abs() < 0.1);
+
+        assert!(matches!(
+            try_escape_speed(GravitationalParameter::new(0.0), Kilometers::new(6378.0)),
+            Err(TransferError::InvalidGravitationalParameter(_))
+        ));
+        assert!(matches!(
+            try_escape_speed(mu, Kilometers::new(-1.0)),
+            Err(TransferError::InvalidRadius(_, _))
+        ));
+        assert!(matches!(
+            try_escape_speed(
+                GravitationalParameter::new(f64::NAN),
+                Kilometers::new(6378.0)
+            ),
+            Err(TransferError::InvalidGravitationalParameter(_))
+        ));
+    }
 }

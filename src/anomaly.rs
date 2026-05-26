@@ -870,4 +870,106 @@ mod tests {
         assert!(f.value().is_finite());
         assert!(hyperbolic_residual(f.value(), ecc.value(), mean.value()).abs() < 1e-13);
     }
+
+    #[test]
+    fn elliptic_circular_orbit_returns_mean_anomaly() {
+        let zero = Eccentricity::new(0.0).unwrap();
+        let m = MeanAnomaly::from_value(1.23);
+        let e = eccentric_from_mean(m, zero, AnomalyOptions::default()).unwrap();
+        assert!((e.value() - m.value()).abs() < 1e-14);
+    }
+
+    #[test]
+    fn hyperbolic_mean_anomaly_zero_returns_zero() {
+        let ecc = Eccentricity::new_unchecked(1.5);
+        let f = hyperbolic_from_mean(MeanAnomaly::from_value(0.0), ecc, AnomalyOptions::default())
+            .unwrap();
+        assert!(f.value().abs() < 1e-14);
+    }
+
+    #[test]
+    fn hyperbolic_mean_anomaly_large_branch() {
+        let ecc = Eccentricity::new_unchecked(1.2);
+        let m = MeanAnomaly::from_value(100.0);
+        assert!(hyperbolic_from_mean(m, ecc, AnomalyOptions::default()).is_ok());
+    }
+
+    #[test]
+    fn parabolic_round_trips() {
+        let m = 0.5_f64;
+        let d = parabolic_from_mean(ParabolicAnomaly::new(m));
+        let m_back = d.value() + d.value().powi(3) / 3.0;
+        assert!((m_back - m).abs() < 1e-12);
+    }
+
+    #[test]
+    fn hyperbolic_anomaly_round_trips_all_conversions() {
+        let ecc = Eccentricity::new_unchecked(2.0);
+        let nu = TrueAnomaly::from_value(0.8);
+        let f = hyperbolic_from_true(nu, ecc);
+        let nu2 = true_from_hyperbolic(f, ecc);
+        assert!((nu2.value() - nu.value()).abs() < 1e-12);
+        let m = mean_from_hyperbolic(f, ecc);
+        let f2 = hyperbolic_from_mean(m, ecc, AnomalyOptions::default()).unwrap();
+        assert!((f2.value() - f.value()).abs() < 1e-12);
+    }
+
+    #[test]
+    fn hyperbolic_kepler_rejects_nan_mean_anomaly() {
+        let ecc = Eccentricity::new_unchecked(1.5);
+        let err = hyperbolic_from_mean(
+            MeanAnomaly::from_value(f64::NAN),
+            ecc,
+            AnomalyOptions::default(),
+        );
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn elliptic_kepler_rejects_nan_mean_anomaly() {
+        let ecc = Eccentricity::new_unchecked(0.5);
+        let err = eccentric_from_mean(
+            MeanAnomaly::from_value(f64::NAN),
+            ecc,
+            AnomalyOptions::default(),
+        );
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn elliptic_bisection_fallback_path_is_exercised() {
+        let ecc = Eccentricity::new_unchecked(0.5);
+        let opts = AnomalyOptions::try_new(2, 1e-300).unwrap();
+        let _ = kepler_elliptic(MeanAnomaly::from_value(1.0), ecc, opts);
+    }
+
+    #[test]
+    fn hyperbolic_bisection_fallback_path_is_exercised() {
+        let ecc = Eccentricity::new_unchecked(1.5);
+        let opts = AnomalyOptions::try_new(2, 1e-300).unwrap();
+        let _ = kepler_hyperbolic(MeanAnomaly::from_value(1.0), ecc, opts);
+    }
+
+    #[test]
+    fn hyperbolic_bisection_large_mean_anomaly_path_is_exercised() {
+        let ecc = Eccentricity::new_unchecked(1.1);
+        let opts = AnomalyOptions::try_new(2, 1e-300).unwrap();
+        let _ = kepler_hyperbolic(MeanAnomaly::from_value(50.0), ecc, opts);
+    }
+
+    #[test]
+    fn anomaly_newtypes_round_trip_values() {
+        let ea = EccentricAnomaly::from_value(1.2);
+        assert_eq!(ea.value(), 1.2);
+        assert_eq!(ea.radians().value(), 1.2);
+
+        let ta = TrueAnomaly::from_value(0.5);
+        assert_eq!(ta.value(), 0.5);
+
+        let ma = MeanAnomaly::from_value(0.8);
+        assert_eq!(ma.value(), 0.8);
+
+        let pa = ParabolicAnomaly::new(0.3);
+        assert_eq!(pa.value(), 0.3);
+    }
 }

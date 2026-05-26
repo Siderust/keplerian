@@ -225,4 +225,38 @@ mod tests {
                 < 1e-8
         );
     }
+
+    #[test]
+    fn mu_accessor_returns_configured_mu() {
+        let mu = GravitationalParameter::new(398600.4418);
+        let p = KeplerProblem::<C, F>::new(mu);
+        assert_eq!(p.mu().value(), 398600.4418);
+    }
+
+    #[test]
+    fn hyperbolic_propagation_returns_finite_state() {
+        let mu = GravitationalParameter::new(398600.4418);
+        let r = 7000.0_f64;
+        let v_esc = (2.0 * mu.value() / r).sqrt();
+        let state = CartesianState::<C, F>::new(
+            Position::<C, F, Kilometer>::new(r, 0.0, 0.0),
+            Velocity::<F, KmPerSecond>::new(0.0, v_esc * 1.3, 0.0),
+        );
+        let result = KeplerProblem::<C, F>::new(mu).propagate(&state, Second::new(100.0));
+        assert!(result.is_ok(), "hyperbolic propagation failed: {result:?}");
+    }
+
+    #[test]
+    fn parabolic_state_returns_error() {
+        let mu = GravitationalParameter::new(398600.4418);
+        let r = 7000.0_f64;
+        let v_par = (2.0 * mu.value() / r).sqrt();
+        let state = CartesianState::<C, F>::new(
+            Position::<C, F, Kilometer>::new(r, 0.0, 0.0),
+            Velocity::<F, KmPerSecond>::new(0.0, v_par, 0.0),
+        );
+        assert!(KeplerProblem::<C, F>::new(mu)
+            .propagate(&state, Second::new(100.0))
+            .is_err());
+    }
 }
