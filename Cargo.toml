@@ -1,6 +1,6 @@
 [package]
 name = "keplerian"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["VPRamon <vallespuigramon@gmail.com>"]
 description = "Domain-agnostic Keplerian dynamics: typed anomaly solvers, elements, propagation, Lambert, and transfer search."
@@ -18,7 +18,7 @@ serde = ["dep:serde", "qtty/serde", "affn/serde"]
 
 [dependencies]
 qtty = { version = "0.8", default-features = false, features = ["satellite"] }
-affn = { version = "0.7.1", default-features = false, features = ["astro"] }
+affn = { version = "0.8", default-features = false, features = ["astro"] }
 thiserror = { version = "2", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
 
