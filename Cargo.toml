@@ -7,7 +7,7 @@ description = "Domain-agnostic Keplerian dynamics: typed anomaly solvers, elemen
 license = "AGPL-3.0-only"
 readme = "README.md"
 repository = "https://github.com/Siderust/keplerian"
-keywords = ["kepler", "orbital-mechanics", "lambert", "astrodynamics", "no-std"]
+keywords = ["kepler", "orbital-mechanics", "lambert", "astrodynamics"]
 categories = ["science", "mathematics", "aerospace", "no-std"]
 
 [features]
