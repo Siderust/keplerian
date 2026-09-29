@@ -41,9 +41,11 @@ affn   ─── typed geometry, frames, centers
 
 | Feature | Default | Effect |
 |---|:---:|---|
-| `std` | yes | Standard-library support via `qtty`. |
-| `alloc` | no | Enables `Vec`-backed search grids. |
-| `serde` | no | Serde derives for public data types. |
+| `std` | yes | Standard library (implies `alloc`); forwards `qtty/std` and `affn/std`. |
+| `alloc` | no | Heap-backed APIs such as `Vec` search grids; forwards `qtty/alloc` and `affn/alloc`. |
+| `serde` | no | Serde derives for public data types (implies `alloc`). |
+
+Pure `core`-only builds use `--no-default-features`. Combine with `--features alloc` and/or `--features serde` as needed.
 
 ## License
 

@@ -15,6 +15,9 @@
 //! - Battin, R. H. (1999). *An Introduction to the Mathematics and Methods of
 //!   Astrodynamics*.
 
+#[cfg(not(feature = "std"))]
+use qtty::Real;
+
 /// Dot product of two raw 3-vectors.
 #[inline]
 pub(crate) fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {

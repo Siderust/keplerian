@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-09-29
+
+### Changed
+
+- Bump `affn` to `0.10` for first-class `no_std` support (closes [#5](https://github.com/Siderust/keplerian/issues/5)).
+- Forward `affn`/`qtty` features explicitly: `std` implies `alloc` and enables
+  `qtty/std` + `affn/std`; `alloc` enables `qtty/alloc` + `affn/alloc`.
+- `serde` now implies `alloc` (matching `affn` 0.10).
+- Use `qtty::{Real, Scalar, Transcendental}` for float math so `no_std` builds
+  compile without pulling `std` through dependencies.
+- Refresh transitive dependency lockfile (`thiserror`, `serde`, proc-macro stack).
+
 ## [0.2.1] - 2026-06-21
 
 ### Changed

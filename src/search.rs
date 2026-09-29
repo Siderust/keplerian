@@ -21,6 +21,8 @@ use affn::centers::ReferenceCenter;
 use affn::frames::ReferenceFrame;
 use qtty::dynamics::{GravitationalParameter, KmPerSecond, KmPerSeconds};
 use qtty::length::Kilometer;
+#[cfg(not(feature = "std"))]
+use qtty::Real;
 use qtty::Second;
 
 use crate::lambert::{lambert, LambertBranch, LambertError};
