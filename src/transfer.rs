@@ -23,6 +23,8 @@ use qtty::dynamics::{
     GravitationalParameter, KmPerSeconds, SpecificAngularMomentum, SpecificOrbitalEnergy,
 };
 use qtty::length::Kilometers;
+#[cfg(not(feature = "std"))]
+use qtty::Real;
 use qtty::Second;
 
 use crate::problem::KeplerProblem;

@@ -19,6 +19,9 @@
 
 use core::f64::consts::PI;
 
+#[cfg(not(feature = "std"))]
+use qtty::{Real, Transcendental};
+
 use crate::vec3::{cross, norm, scale, sub};
 
 use super::error::LambertError;

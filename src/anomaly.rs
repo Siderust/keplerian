@@ -21,6 +21,8 @@
 use core::f64::consts::PI;
 
 use qtty::angular::Radians;
+#[cfg(not(feature = "std"))]
+use qtty::{Real, Scalar, Transcendental};
 
 use crate::eccentricity::Eccentricity;
 

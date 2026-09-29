@@ -27,6 +27,8 @@ use affn::frames::ReferenceFrame;
 use qtty::angular::Radians;
 use qtty::dynamics::{GravitationalParameter, KmPerSecond};
 use qtty::length::{Kilometer, Kilometers};
+#[cfg(not(feature = "std"))]
+use qtty::{Real, Transcendental};
 
 use crate::anomaly::wrap_two_pi_raw;
 use crate::eccentricity::Eccentricity;

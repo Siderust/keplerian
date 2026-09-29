@@ -22,6 +22,8 @@ use core::marker::PhantomData;
 use affn::centers::ReferenceCenter;
 use affn::frames::ReferenceFrame;
 use qtty::dynamics::GravitationalParameter;
+#[cfg(not(feature = "std"))]
+use qtty::Real;
 use qtty::Second;
 
 use crate::anomaly::{
