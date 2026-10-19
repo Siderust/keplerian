@@ -4,9 +4,7 @@ version = 4
 
 [[package]]
 name = "affn"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a0b360b4990eaa67ad4413f407cfcd0d7f37f246456118d16ff9bdada7026f3"
+version = "0.12.1"
 dependencies = [
  "affn-derive",
  "qtty",
@@ -16,8 +14,6 @@ dependencies = [
 [[package]]
 name = "affn-derive"
 version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "167a4b6fa3749c5a3b77c33061dc4ad2fcd84e38954c1db519a6be2c46381929"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -113,7 +109,7 @@ dependencies = [
 
 [[package]]
 name = "keplerian"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "affn",
  "approx",
