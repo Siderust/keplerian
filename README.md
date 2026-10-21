@@ -73,7 +73,8 @@ The existing `true_from_eccentric` is canonical and returns `[0, 2π)`.
 wrapper; Siderust retains that unit-preserving expression. CartesianState already
 uses affn primitives; another state wrapper would not remove geometry logic.
 
-Until affn 0.12.1 is published, create `.local-deps/affn` as a local symlink or
-checkout of `feat/cartesian-state-kinematics`. CI checks out the pinned revision
-there. Remove the root manifest patch and CI dependency checkouts after publication,
-then run `cargo update -p affn`, `cargo tree -d` and the full CI command matrix.
+The geometry dependency is published on crates.io and is configured as:
+
+```toml
+affn = { version = "0.12.1", default-features = false, features = ["astro"] }
+```

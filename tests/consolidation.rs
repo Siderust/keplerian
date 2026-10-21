@@ -96,3 +96,127 @@ fn geometry_projection_preserves_conventions_and_revalidates_public_fields() {
         assert_eq!(el.to_geometry().is_err(), e == 1.0);
     }
 }
+
+#[test]
+fn cartesian_rotation_matches_independent_classical_reference() {
+    const MU: f64 = 398_600.441_8;
+
+    // The first case is retrograde and elliptic; the second is hyperbolic.
+    // The reference below expands Rz(raan) Rx(inclination) Rz(arg_periapsis)
+    // directly instead of using affn's Euler-angle implementation.
+    for (a, e, inclination, raan, arg_periapsis, true_anomaly) in [
+        (12_000.0, 0.35, 2.2, 1.1, 0.65, 1.2),
+        (-18_000.0, 1.6, 0.8, 2.4, 0.35, 0.7),
+    ] {
+        let elements = KeplerianElements::<Frame>::new(
+            Kilometers::new(a),
+            Eccentricity::new(e).unwrap(),
+            Radians::new(inclination),
+            Radians::new(raan),
+            Radians::new(arg_periapsis),
+            Radians::new(true_anomaly),
+        )
+        .unwrap();
+        let state = elements
+            .try_to_cartesian::<TestCenter>(qtty::dynamics::GravitationalParameter::new(MU))
+            .unwrap();
+
+        let p = a * (1.0 - e * e);
+        let denominator = 1.0 + e * true_anomaly.cos();
+        let radius = p / denominator;
+        let root = (MU / p).sqrt();
+        let r_pqw = [
+            radius * true_anomaly.cos(),
+            radius * true_anomaly.sin(),
+            0.0,
+        ];
+        let v_pqw = [
+            -root * true_anomaly.sin(),
+            root * (e + true_anomaly.cos()),
+            0.0,
+        ];
+        let (sw, cw) = arg_periapsis.sin_cos();
+        let (si, ci) = inclination.sin_cos();
+        let (so, co) = raan.sin_cos();
+        let rotate = |vector: [f64; 3]| {
+            let x = cw * vector[0] - sw * vector[1];
+            let y = sw * vector[0] + cw * vector[1];
+            let z = 0.0;
+            [
+                co * x - so * (ci * y - si * z),
+                so * x + co * (ci * y - si * z),
+                si * y + ci * z,
+            ]
+        };
+        let expected_position = rotate(r_pqw);
+        let expected_velocity = rotate(v_pqw);
+
+        let position = state.position();
+        let velocity = state.velocity();
+        for (actual, expected) in [
+            (position.x().value(), expected_position[0]),
+            (position.y().value(), expected_position[1]),
+            (position.z().value(), expected_position[2]),
+        ] {
+            assert!(
+                (actual - expected).abs() < 1e-8,
+                "position mismatch: actual={actual}, expected={expected}"
+            );
+        }
+        for (actual, expected) in [
+            (velocity.x().value(), expected_velocity[0]),
+            (velocity.y().value(), expected_velocity[1]),
+            (velocity.z().value(), expected_velocity[2]),
+        ] {
+            assert!(
+                (actual - expected).abs() < 1e-11,
+                "velocity mismatch: actual={actual}, expected={expected}"
+            );
+        }
+
+        let position_norm = position
+            .x()
+            .value()
+            .hypot(position.y().value())
+            .hypot(position.z().value());
+        let velocity_norm = velocity
+            .x()
+            .value()
+            .hypot(velocity.y().value())
+            .hypot(velocity.z().value());
+        assert!((position_norm - radius).abs() < 1e-8);
+        assert!((velocity_norm * velocity_norm - (2.0 * MU / radius - MU / a)).abs() < 1e-12);
+
+        let angular_momentum = [
+            position.y().value() * velocity.z().value()
+                - position.z().value() * velocity.y().value(),
+            position.z().value() * velocity.x().value()
+                - position.x().value() * velocity.z().value(),
+            position.x().value() * velocity.y().value()
+                - position.y().value() * velocity.x().value(),
+        ];
+        let expected_angular_momentum = [si * so, -si * co, ci];
+        let angular_momentum_norm = angular_momentum
+            .iter()
+            .map(|component| component * component)
+            .sum::<f64>()
+            .sqrt();
+        for (actual, expected) in angular_momentum
+            .iter()
+            .map(|component| component / angular_momentum_norm)
+            .zip(expected_angular_momentum)
+        {
+            assert!((actual - expected).abs() < 1e-12);
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct TestCenter;
+impl affn::centers::ReferenceCenter for TestCenter {
+    type Params = ();
+
+    fn center_name() -> &'static str {
+        "TestCenter"
+    }
+}

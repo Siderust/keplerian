@@ -15,7 +15,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Changed
 - Reuse affn's ZXZ rotation for Cartesian conversion, removing the independent
   orbital rotation implementation and computing its coefficients only once.
-- Require affn 0.12.1 (temporary local patch and pinned CI checkout until release).
+- Require the published affn 0.12.1 release.
 - Keep public fields, constructors, `CartesianState`, Serde and anomaly wrapping
   unchanged. Regression tests cover singularities and large/negative anomalies.
 
