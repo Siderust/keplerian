@@ -53,23 +53,3 @@ AGPL-3.0-only.
 
 [`qtty`]: https://crates.io/crates/qtty
 [`affn`]: https://crates.io/crates/affn
-
-## Geometry ownership and compatibility
-
-`KeplerianElements` retains its public mutable kilometre/radian fields and Serde
-schema; replacing them by an embedded `OrientedConic` would break callers and
-store duplicate state if both were kept. `to_geometry()` builds a validated affn
-projection on demand: hyperbolic signed `a` becomes a positive magnitude and
-orientation becomes degrees. The returned conic deliberately has no anomaly,
-epoch or gravitational parameter. To reconstruct elements, supply its magnitude
-(with a negative sign when `e > 1`), `Eccentricity::new(shape.eccentricity())`,
-orientation converted to radians and a separately chosen true anomaly to
-`KeplerianElements::new`. Affn's exact parabolic classification and keplerian's
-legacy tolerance are distinct; no validation policy is silently substituted.
-
-The existing `true_from_eccentric` is canonical and returns `[0, 2π)`.
-`true_from_hyperbolic` retains a signed branch. The single expression
-`a * (1 - e*cos(E))` does not justify another public helper for one downstream
-wrapper; Siderust retains that unit-preserving expression. CartesianState already
-uses affn primitives; another state wrapper would not remove geometry logic.
-
