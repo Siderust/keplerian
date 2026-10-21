@@ -5,7 +5,21 @@ All notable changes to this project will be documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.0] - Unreleased
+## [0.5.1] - 2026-10-21
+
+### Added
+- `KeplerianElements::to_geometry()` projects into validated affn conic geometry
+  without a stored duplicate. Document signed hyperbolic axes, degree/radian
+  conversion and exact-vs-tolerant parabolic classification.
+
+### Changed
+- Reuse affn's ZXZ rotation for Cartesian conversion, removing the independent
+  orbital rotation implementation and computing its coefficients only once.
+- Require the published affn 0.12.1 release.
+- Keep public fields, constructors, `CartesianState`, Serde and anomaly wrapping
+  unchanged. Regression tests cover singularities and large/negative anomalies.
+
+## [0.5.0] - 2026-10-18
 
 ### Changed
 

@@ -23,7 +23,10 @@ use core::marker::PhantomData;
 
 use affn::cartesian::{Position, Velocity};
 use affn::centers::ReferenceCenter;
+use affn::conic::{ConicOrientation, ConicValidationError, OrientedConic, SemiMajorAxisParam};
 use affn::frames::ReferenceFrame;
+use affn::ops::Rotation3;
+use qtty::angular::Degree;
 use qtty::angular::Radians;
 use qtty::dynamics::{GravitationalParameter, KmPerSecond};
 use qtty::length::{Kilometer, Kilometers};
@@ -155,6 +158,34 @@ impl<F: ReferenceFrame> KeplerianElements<F> {
         })
     }
 
+    /// Projects into affn geometry without storing a second copy of the elements.
+    ///
+    /// Affn uses a positive semi-major-axis magnitude for both conic families;
+    /// keplerian uses a negative signed axis for hyperbolas. Affn rejects exactly
+    /// parabolic shapes, zero axes and non-finite geometry. Its exact `e == 1`
+    /// classification intentionally differs from [`Self::conic_kind`]'s tolerance.
+    /// Public mutable fields are revalidated by affn here.
+    ///
+    /// # Errors
+    /// Returns affn's validation error for unrepresentable geometry.
+    pub fn to_geometry(
+        &self,
+    ) -> Result<OrientedConic<SemiMajorAxisParam<Kilometer>, F>, ConicValidationError> {
+        let a = self.semi_major_axis.value();
+        let e = self.eccentricity.value();
+        if (e < 1.0 && a <= 0.0) || (e > 1.0 && a >= 0.0) {
+            return Err(ConicValidationError::InvalidSemiMajorAxis);
+        }
+        Ok(OrientedConic::new(
+            SemiMajorAxisParam::try_new(self.semi_major_axis.abs(), self.eccentricity.value())?,
+            ConicOrientation::try_new_strict(
+                self.inclination.to::<Degree>(),
+                self.raan.to::<Degree>(),
+                self.arg_periapsis.to::<Degree>(),
+            )?,
+        ))
+    }
+
     /// Returns the eccentricity-based conic regime.
     #[must_use]
     pub fn conic_kind(&self) -> ConicRegime {
@@ -226,18 +257,9 @@ impl<F: ReferenceFrame> KeplerianElements<F> {
         let root = (mu_val / p).sqrt();
         let r_pqw = [r * nu.cos(), r * nu.sin(), 0.0];
         let v_pqw = [-root * nu.sin(), root * (e + nu.cos()), 0.0];
-        let r_ijk = rotate_pqw(
-            r_pqw,
-            self.raan.value(),
-            self.inclination.value(),
-            self.arg_periapsis.value(),
-        );
-        let v_ijk = rotate_pqw(
-            v_pqw,
-            self.raan.value(),
-            self.inclination.value(),
-            self.arg_periapsis.value(),
-        );
+        let rotation = Rotation3::from_euler_zxz(self.arg_periapsis, self.inclination, self.raan);
+        let r_ijk = rotation.apply_array(r_pqw);
+        let v_ijk = rotation.apply_array(v_pqw);
         Ok(CartesianState::new(
             Position::<C, F, Kilometer>::new(r_ijk[0], r_ijk[1], r_ijk[2]),
             Velocity::<F, KmPerSecond>::new(v_ijk[0], v_ijk[1], v_ijk[2]),
@@ -358,23 +380,6 @@ fn vec3_from_pos<C: ReferenceCenter, F: ReferenceFrame>(p: &Position<C, F, Kilom
 
 fn vec3_from_vel<F: ReferenceFrame>(v: &Velocity<F, KmPerSecond>) -> [f64; 3] {
     [v.x().value(), v.y().value(), v.z().value()]
-}
-
-fn rotate_pqw(v: [f64; 3], raan: f64, inc: f64, argp: f64) -> [f64; 3] {
-    let (co, so) = (raan.cos(), raan.sin());
-    let (ci, si) = (inc.cos(), inc.sin());
-    let (cw, sw) = (argp.cos(), argp.sin());
-    let r11 = co * cw - so * sw * ci;
-    let r12 = -co * sw - so * cw * ci;
-    let r21 = so * cw + co * sw * ci;
-    let r22 = -so * sw + co * cw * ci;
-    let r31 = sw * si;
-    let r32 = cw * si;
-    [
-        r11 * v[0] + r12 * v[1],
-        r21 * v[0] + r22 * v[1],
-        r31 * v[0] + r32 * v[1],
-    ]
 }
 
 #[cfg(test)]
