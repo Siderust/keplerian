@@ -15,12 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Temporary until affn 0.12.1 is published.
-      - uses: actions/checkout@v4
-        with:
-          repository: Siderust/affn
-          ref: 16a11d4720c06ebeb47f43ebd363256c405f61f1
-          path: .local-deps/affn
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -38,12 +32,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Temporary until affn 0.12.1 is published.
-      - uses: actions/checkout@v4
-        with:
-          repository: Siderust/affn
-          ref: 16a11d4720c06ebeb47f43ebd363256c405f61f1
-          path: .local-deps/affn
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --all-targets --all-features
@@ -54,12 +42,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Temporary until affn 0.12.1 is published.
-      - uses: actions/checkout@v4
-        with:
-          repository: Siderust/affn
-          ref: 16a11d4720c06ebeb47f43ebd363256c405f61f1
-          path: .local-deps/affn
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo install --locked cargo-deny || true
@@ -72,12 +54,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Temporary until affn 0.12.1 is published.
-      - uses: actions/checkout@v4
-        with:
-          repository: Siderust/affn
-          ref: 16a11d4720c06ebeb47f43ebd363256c405f61f1
-          path: .local-deps/affn
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview
@@ -90,12 +66,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Temporary until affn 0.12.1 is published.
-      - uses: actions/checkout@v4
-        with:
-          repository: Siderust/affn
-          ref: 16a11d4720c06ebeb47f43ebd363256c405f61f1
-          path: .local-deps/affn
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: miri

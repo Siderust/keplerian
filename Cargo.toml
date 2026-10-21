@@ -44,7 +44,3 @@ print_stdout = "warn"
 
 [lints.rustdoc]
 broken_intra_doc_links = "deny"
-
-# Temporary coordinated release: remove after affn 0.12.1 is published.
-[patch.crates-io]
-affn = { path = ".local-deps/affn" }
